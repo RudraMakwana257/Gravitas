@@ -85,6 +85,17 @@ class ClassifierHardeningTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertEqual(classify_shell(command)["mutation"], "mutation", command)
 
+    def test_sed_inplace_variants_are_mutation(self):
+        for command in ("sed --in-place=.bak s/a/b/ f",
+                        "sed --in-place s/a/b/ f",
+                        "sed -ni s/a/b/ f",
+                        "sed -i.bak s/a/b/ f",
+                        "sed -in s/a/b/ f",
+                        "sed -Ei s/a/b/ f",
+                        "sed -ri s/a/b/ f"):
+            with self.subTest(command=command):
+                self.assertEqual(classify_shell(command)["mutation"], "mutation", command)
+
     def test_sed_filter_scripts_stay_none(self):
         for command in ("sed s/a/b/ f", "sed -n p f", "sed -e 's/a/b/g' -e '/x/d' f",
                         "sed '1,5d' f", "sed -n '/err/p' f", "sed -l 70 's/a/b/' f",

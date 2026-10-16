@@ -309,6 +309,19 @@ def _sed_scripts(rest: list) -> list | None:
     return exprs
 
 
+def _is_sed_inplace(arg: str) -> bool:
+    """True if arg is an in-place editing flag (-i, -i.bak, -ni, --in-place, --in-place=SUFFIX)."""
+    if arg == "--in-place" or arg.startswith("--in-place="):
+        return True
+    if arg.startswith("-") and not arg.startswith("--") and len(arg) > 1:
+        for char in arg[1:]:
+            if char in ("e", "f"):
+                break
+            if char == "i":
+                return True
+    return False
+
+
 def _operand_paths(segment: str) -> list[str]:
     """Extract enumerable file operands (tee targets, dd of=).
 
@@ -433,7 +446,7 @@ def classify_shell_segment(segment: str, _depth: int = 0) -> dict:
                 "reason": f"{binary} deletes or moves state"}
     if binary in {"cp", "touch", "mkdir", "ln", "sed", "patch", "tar", "unzip", "zip", "install",
                    "ed", "ex", "vi", "vim", "nano", "emacs"}:
-        if binary == "sed" and not any(arg == "-i" or arg.startswith("-i") or arg == "--in-place" for arg in rest):
+        if binary == "sed" and not any(_is_sed_inplace(arg) for arg in rest):
             scripts = _sed_scripts(rest)
             if scripts is not None and not any(_sed_script_mutates(s) for s in scripts):
                 return {"mutation": "none", "executable": binary, "argv": argv,

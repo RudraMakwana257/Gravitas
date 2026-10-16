@@ -50,6 +50,8 @@ BYPASS_CORPUS = {
     "sed -i s/a/b/ file": "mutation",
     "sed s/a/b/ file": "none",
     "sed -i.bak s/a/b/ file": "mutation",
+    "sed --in-place=.bak s/a/b/ file": "mutation",
+    "sed -ni s/a/b/ file": "mutation",
     "find . -name x -delete": "destructive",
     "find . -name x -exec rm {} +": "destructive",
     "dd if=/dev/zero of=disk.img bs=1M": "destructive",
