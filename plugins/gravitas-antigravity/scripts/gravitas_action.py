@@ -129,7 +129,7 @@ DESTRUCTIVE_BINARIES = frozenset({
 
 #: git config keys (via `git -c`) that make read-only subcommands run programs.
 _GIT_EXEC_CONFIG = ("external", "pager", "command", "fsmonitor", "editor", "helper",
-                    "alias.", "hook", "textconv")
+                    "alias.", "hook", "textconv", "include.", "includeif.", "askpass")
 
 DESTRUCTIVE_GIT = frozenset({"reset", "clean", "checkout", "restore", "rm"})
 
