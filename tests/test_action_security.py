@@ -58,6 +58,12 @@ class ClassifierHardeningTests(unittest.TestCase):
                         "git -c diff.external=./hook diff", "git -c core.pager=./x log",
                         "git -c include.path=/tmp/evil log", "git -c core.askpass=/tmp/evil log",
                         "git -c includeIf.gitdir:/foo.path=/tmp/evil diff",
+                        "git -C sub -c core.pager=./x log",
+                        "git --git-dir /tmp/x -c core.pager=./p log",
+                        "git --work-tree /tmp/w -c core.pager=./p log",
+                        "git --git-dir=/tmp/x -c core.pager=./p log",
+                        "git --work-tree=/tmp/w -c core.pager=./p log",
+                        "git -C /tmp/a -C /tmp/b -c diff.external=./hook diff",
                         "git branch newbranch", "git branch feat HEAD~1",
                         "git branch -u origin/main", "git branch --set-upstream-to=origin/main"):
             with self.subTest(command=command):
@@ -72,6 +78,8 @@ class ClassifierHardeningTests(unittest.TestCase):
         for command in ("git branch", "git branch -a", "git branch -vv", "git branch --show-current",
                         "git branch --list 'feat*'", "git branch --merged main",
                         "git branch --contains HEAD", "git diff --stat", "git -c color.ui=never diff",
+                        "git -C sub -c color.ui=never log", "git --git-dir /tmp/x -c color.ui=never status",
+                        "git --work-tree /tmp/w -c color.ui=never diff",
                         "git log --oneline -5", "git -C sub status"):
             with self.subTest(command=command):
                 self.assertEqual(classify_shell(command)["mutation"], "none", command)

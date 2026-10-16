@@ -363,14 +363,19 @@ def classify_shell_segment(segment: str, _depth: int = 0) -> dict:
                 "reason": f"{binary} is never read-only"}
     if binary == "git":
         _i = 0
-        while _i < len(rest) and rest[_i].startswith("-"):
-            if rest[_i] == "-c" and _i + 1 < len(rest):
+        while _i < len(rest):
+            token = rest[_i]
+            if token == "-c" and _i + 1 < len(rest):
                 if any(k in rest[_i + 1].split("=", 1)[0].lower() for k in _GIT_EXEC_CONFIG):
                     return {"mutation": "mutation", "executable": "git", "argv": argv,
                             "reason": "git -c sets a config key that can run a program"}
                 _i += 2
-            else:
+            elif token in ("-C", "--git-dir", "--work-tree") and _i + 1 < len(rest):
+                _i += 2
+            elif token.startswith("-"):
                 _i += 1
+            else:
+                break
         rest, _git_dirs = _strip_git_globals(rest)
         sub = rest[0] if rest else ""
         if sub in DESTRUCTIVE_GIT:
