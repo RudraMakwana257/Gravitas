@@ -210,6 +210,12 @@ class ClassifierHardeningTests(unittest.TestCase):
         self.assertIn("out2", result["paths"])
         dd = classify_shell("dd if=/dev/zero of=disk.img bs=1M")
         self.assertIn("disk.img", dd["paths"])
+        sed = classify_shell("sed -i s/a/b/ a.py")
+        self.assertEqual(sed["paths"], ["a.py"])
+        sed_multi = classify_shell("sed -i.bak -e s/a/b/ a.py b.py")
+        self.assertEqual(sed_multi["paths"], ["a.py", "b.py"])
+        sed_read = classify_shell("sed s/a/b/ a.py")
+        self.assertEqual(sed_read["paths"], [])
 
     def test_quiet_queries_stay_none(self):
         for command in ("git status", "ls -la", "sed s/a/b/ f", "npm ls", "pip list"):

@@ -211,6 +211,57 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("event_hash", entry)
         self.assertEqual(json.loads(run_script("stop_gate.py", {}, cwd=self.cwd).stdout)["decision"], "allow")
 
+    def test_shell_mutations_emit_write_records(self):
+        session = self.init({"mode": "implement", "objective": "x"})
+        for cmd in ("echo hi > a.py", "cat x | tee a.py", "sed -i s/a/b/ a.py"):
+            payload = {
+                "toolCall": {"name": "run_command", "args": {"CommandLine": cmd}},
+                "success": True,
+            }
+            res = run_script("post_tool.py", payload, cwd=self.cwd)
+            self.assertEqual(json.loads(res.stdout), {})
+        for cmd in ("ls", "git status"):
+            payload = {
+                "toolCall": {"name": "run_command", "args": {"CommandLine": cmd}},
+                "success": True,
+            }
+            res = run_script("post_tool.py", payload, cwd=self.cwd)
+            self.assertEqual(json.loads(res.stdout), {})
+
+        entries = [json.loads(line) for line in (session / "evidence.jsonl").read_text().splitlines()]
+        writes = [e for e in entries if e.get("source") == "write"]
+        self.assertEqual(len(writes), 3)
+        for write in writes:
+            self.assertEqual(write["file"], "a.py")
+            self.assertTrue(write["success"])
+
+    def test_shell_mutation_invalidates_prior_validator_pass_end_to_end(self):
+        session = self.init({
+            "mode": "implement", "objective": "x",
+            "acceptance_criteria": [{"id": "tests", "statement": "tests pass", "validators": ["unit"]}],
+            "validators": [{"id": "unit", "command": [sys.executable, "-c", "pass"], "criterion_ids": ["tests"]}],
+        })
+        result = run_script(
+            "validator_runner.py", None, "--session-dir", str(session), "--validator-id", "unit",
+            "--criterion-id", "tests", "--", sys.executable, "-c", "pass", cwd=self.cwd,
+        )
+        self.assertEqual(result.returncode, 0)
+        # PASS before shell mutation -> stop gate allows
+        gate_before = json.loads(run_script("stop_gate.py", {}, cwd=self.cwd).stdout)
+        self.assertEqual(gate_before["decision"], "allow")
+
+        # Mutate file through shell
+        payload = {
+            "toolCall": {"name": "run_command", "args": {"CommandLine": "echo hi > a.py"}},
+            "success": True,
+        }
+        run_script("post_tool.py", payload, cwd=self.cwd)
+
+        # Stop gate must now refuse completion because the PASS is stale
+        gate_after = json.loads(run_script("stop_gate.py", {}, cwd=self.cwd).stdout)
+        self.assertEqual(gate_after["decision"], "continue")
+        self.assertIn("acceptance criteria have no verification evidence", gate_after["reason"])
+
     def test_stop_gate_rejects_forged_validator_command(self):
         declared_command = [sys.executable, "-c", "pass"]
         session = self.init({

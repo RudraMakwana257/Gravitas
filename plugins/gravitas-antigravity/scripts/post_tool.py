@@ -19,7 +19,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from session_context import session_dir_for_payload
 from evidence_chain import append_evidence
-from gravitas_action import READ_TOOLS, WRITE_TOOLS, antigravity_envelope, target_file
+from gravitas_action import (
+    READ_TOOLS,
+    WRITE_TOOLS,
+    antigravity_envelope,
+    classify_shell,
+    target_file,
+)
 
 
 def tool_call(payload: object) -> tuple[str, dict]:
@@ -147,6 +153,19 @@ def main():
                 "verdict": "PASS" if success else "FAIL",
                 "timestamp": timestamp
             })
+
+        # Record file writes from shell mutations so freshness is invalidated.
+        if command:
+            classification = classify_shell(command)
+            if classification.get("mutation") in ("mutation", "destructive", "write"):
+                for path in classification.get("paths", []):
+                    append_evidence(session_dir, {
+                        "source": "write",
+                        "file": path,
+                        "command": command,
+                        "success": success,
+                        "timestamp": timestamp,
+                    })
 
     # Record file writes
     if tool_name in WRITE_TOOLS:

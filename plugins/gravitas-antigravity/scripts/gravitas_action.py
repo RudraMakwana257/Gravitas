@@ -478,6 +478,28 @@ def _operand_paths(segment: str) -> list[str]:
         return [arg for arg in rest if not arg.startswith("-") and arg not in ("--",)]
     if binary == "dd":
         return [arg[3:] for arg in rest if arg.startswith("of=") and len(arg) > 3]
+    if binary == "sed" and any(_is_sed_inplace(arg) for arg in rest):
+        files = []
+        has_expr = False
+        idx = 0
+        while idx < len(rest):
+            arg = rest[idx]
+            if arg == "--":
+                files.extend(rest[idx + 1:])
+                break
+            elif arg in ("-e", "-f", "--expression", "--file", "-l", "--line-length"):
+                if arg in ("-e", "-f", "--expression", "--file"):
+                    has_expr = True
+                idx += 2
+            elif arg.startswith(("-e", "-f", "--expression=", "--file=")):
+                has_expr = True
+                idx += 1
+            elif arg.startswith("-"):
+                idx += 1
+            else:
+                files.append(arg)
+                idx += 1
+        return files if has_expr else files[1:]
     return []
 
 
