@@ -18,6 +18,8 @@ STATES = ("PENDING", "SUPPORTED", "PASS", "FAIL", "BLOCKED", "UNVERIFIABLE")
 
 OWNED_SOURCES = ("validator",)
 
+UNKNOWN_WRITE_TIME = datetime.max.replace(tzinfo=timezone.utc)
+
 
 def parse_time(value: object) -> datetime | None:
     if not isinstance(value, str) or not value:
@@ -53,9 +55,11 @@ def declared_validator_pass(entry: dict, validator: dict) -> bool:
 def last_write_time(evidence: list[dict]) -> datetime | None:
     latest = None
     for entry in evidence:
-        if entry.get("source") == "write":
+        if isinstance(entry, dict) and entry.get("source") == "write":
             moment = parse_time(entry.get("timestamp"))
-            if moment and (latest is None or moment > latest):
+            if moment is None:
+                return UNKNOWN_WRITE_TIME
+            if latest is None or moment > latest:
                 latest = moment
     return latest
 
@@ -65,6 +69,8 @@ def is_fresh(entry: dict, evidence: list[dict]) -> bool:
     if moment is None:
         return False
     cutoff = last_write_time(evidence)
+    if cutoff is UNKNOWN_WRITE_TIME:
+        return False
     return cutoff is None or moment > cutoff
 
 
